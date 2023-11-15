@@ -153,7 +153,7 @@ class BankApp:
         self.initial_deposit_entry.bind("<FocusOut>", lambda event: self.on_entry_focus_out(event, "Initial Deposit"))
         self.initial_deposit_entry.pack(pady=12, padx=10)
 
-        button = Button(master=frame, text='Confirm', command=self.on_confirm_button_click, bg="#2ECC71", fg="white")
+        button = Button(master=frame, text='Create', command=self.on_confirm_button_click, bg="#2ECC71", fg="white")
         button.pack(pady=12, padx=10)
 
     def on_entry_focus_in(self, event, placeholder):

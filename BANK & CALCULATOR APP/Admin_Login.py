@@ -1,108 +1,72 @@
+# Admin_Login.py
+
 import subprocess
 from tkinter import messagebox
 import bcrypt
 import customtkinter as ctk
 import sqlite3
+from Admin_Page import AdminPage, AppAdmin, DatabaseHandler
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-class BankDatabase:
-    def __init__(self, db_file="bank_database.db"):
-        self.conn = sqlite3.connect(db_file)
-        self.create_table()
-        self.create_admin()
+class App(ctk.CTk):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title("ADMIN")
+        self.geometry("400x400")
 
-    def create_table(self):
-        # Create the 'accounts' table
-        cursor = self.conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS accounts (
-                account_number TEXT PRIMARY KEY,
-                username TEXT,
-                password TEXT,
-                balance REAL
-            )
-        ''')
+        label = ctk.CTkLabel(self, text="Admin LOGIN")
+        label.pack(pady=20)
 
-        # Create the 'admins' table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS admins (
-                id INTEGER PRIMARY KEY,
-                username TEXT UNIQUE,
-                password TEXT
-            )
-        ''')
+        frame = ctk.CTkFrame(master=self)
+        frame.pack(pady=20, padx=40, fill='both', expand=True)
 
-        self.conn.commit()
+        label = ctk.CTkLabel(master=frame, text='ENTER ADMIN DETAILS')
+        label.pack(pady=12, padx=10)
 
-    def create_admin(self):
-        # Create an admin user if it doesn't exist
-        cursor = self.conn.cursor()
-        cursor.execute(
-            "INSERT OR IGNORE INTO admins (username, password) VALUES (?, ?)",
-            (
-                "admin",
-                bcrypt.hashpw("admin@123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
-            ),
-        )
-        self.conn.commit()
+        user_entry = ctk.CTkEntry(master=frame, placeholder_text="Username")
+        user_entry.pack(pady=12, padx=10)
 
-    def execute(self, *args, **kwargs):
-        return self.conn.execute(*args, **kwargs)
+        user_pass = ctk.CTkEntry(master=frame, placeholder_text="Password", show="*")
+        user_pass.pack(pady=12, padx=10)
 
-def get_admin_credentials():
-    conn = sqlite3.connect('bank_database.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT username, password FROM admins LIMIT 1")
-    admin_data = cursor.fetchone()
-    conn.close()
+        button = ctk.CTkButton(master=frame, text='Login', command=lambda: login(user_entry.get(), user_pass.get()))
+        button.pack(pady=12, padx=10)
 
-    if admin_data:
-        return admin_data
-    else:
-        return None
+        self.db_handler = DatabaseHandler()
 
-bank_database = BankDatabase()
-cursor = bank_database.execute("SELECT * FROM admins WHERE username=?", ("admin",))
-admin_user = cursor.fetchone()
+        def get_admin_credentials():
+            conn = sqlite3.connect('bank_database.db')
+            cursor = conn.cursor()
+            cursor.execute("SELECT username, password FROM admins LIMIT 1")
+            admin_data = cursor.fetchone()
+            conn.close()
 
-def login(username_entry, password_entry):
-    entered_username = username_entry.get()
-    entered_password = password_entry.get()
+            if admin_data:
+                return admin_data
+            else:
+                return None
 
-    if admin_user and bcrypt.checkpw(entered_password.encode("utf-8"), admin_user[2].encode("utf-8")):
-        messagebox.showinfo("Login Successful", "Welcome, Admin!")
-        open_admin_page()
-    else:
-        messagebox.showerror("Login Failed", "Invalid username or password. Please try again.")
+        def login(username_entry, password_entry):
+            entered_username = username_entry
+            entered_password = password_entry
 
-def open_admin_page():
-    try:
-        subprocess.run(["python", "Admin_Page.py"])
-    except Exception as e:
-        messagebox.showerror("Error", f"Failed to open Admin Page: {e}")
+            admin_credentials = get_admin_credentials()
+            if admin_credentials and entered_username == admin_credentials[0] and bcrypt.checkpw(entered_password.encode("utf-8"), admin_credentials[1].encode("utf-8")):
+                messagebox.showinfo("Login Successful", "Welcome, Admin!")
+                open_admin_page(self.db_handler)
+            else:
+                messagebox.showerror("Login Failed", "Invalid username or password. Please try again.")
 
-app = ctk.CTk()
-app.geometry("400x400")
-app.title("ADMIN")
+        def open_admin_page(db_handler):
+            try:
+                admin_page = AdminPage(db_handler)
+                app_admin = AppAdmin(admin_page)
+                app_admin.mainloop()
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to open Admin Page: {e}")
 
-label = ctk.CTkLabel(app, text="Admin LOGIN")
-label.pack(pady=20)
-
-frame = ctk.CTkFrame(master=app)
-frame.pack(pady=20, padx=40, fill='both', expand=True)
-
-label = ctk.CTkLabel(master=frame, text='ENTER ADMIN DETAILS')
-label.pack(pady=12, padx=10)
-
-user_entry = ctk.CTkEntry(master=frame, placeholder_text="Username")
-user_entry.pack(pady=12, padx=10)
-
-user_pass = ctk.CTkEntry(master=frame, placeholder_text="Password", show="*")
-user_pass.pack(pady=12, padx=10)
-
-button = ctk.CTkButton(master=frame, text='Login', command=lambda: login(user_entry.get(), user_pass.get()))
-button.pack(pady=12, padx=10)
-
-app.mainloop()
+if __name__ == "__main__":
+    app = App()
+    app.mainloop()
